@@ -9,7 +9,7 @@
 
 #define MAXLINE 255
 #define THREAD_NUMBER 20
-#define TIME_SLICE 1000000
+#define TIME_SLICE 100000
 #define MAX_TIME 100
 #define TRUE 1
 #define FALSE 0
@@ -48,7 +48,7 @@ Subthread(void* threadCount)
         printf(count < 9 ? "Thread  " : "Thread "); // 强迫症犯了，控制字母和数字之间的空格
         printf("%d : %d\n", count + 1, ++timer);
         subTimer++;
-        printf("Timer: %d\n", timer);
+        // printf("Timer: %d\n", timer);
         usleep(TIME_SLICE);
     }
     pthread_exit(0);
@@ -61,10 +61,11 @@ RRSubthread(void* threadCount)
 
     int count = *(int*)threadCount;
     int subTimer = 0;
-    int t = 0;
+    int t = timer - 1;
     while (TRUE) {
         // int it = PCBQueue[count].intervalTime;
         if (subTimer >= PCBQueue[count].intervalTime) pthread_exit(0);
+        // if (timer == -1) pthread_exit(0);
         // if (timer == tt) pthread_exit(0);
 
         // 等待 Timer 前进
@@ -99,6 +100,10 @@ int
 DoFCFS()
 {
     FCFSQueInit();
+    int totalTime = 0;
+    for (int i = 0; i < THREAD_NUMBER; i++) {
+        totalTime += PCBQueue[i].intervalTime;
+    }
     int ret[THREAD_NUMBER] = { 0 };
     int threadCount = 0;
     for (int i = 0; i < THREAD_NUMBER; i++) {
@@ -111,6 +116,10 @@ DoFCFS()
         pthread_join(PCBQueue[threadCount].id, NULL);
         threadCount++;
     }
+    // for (int i = 0; i < totalTime; i++) {
+    //     timer++;
+    //     usleep(TIME_SLICE);
+    // }
     return 0;
 }
 
@@ -240,12 +249,12 @@ DoRR()
 void
 printHelp()
 {
-    printf("\n请在可执行文件后加选项参数(纯大写或纯小写均可)：\n"
-           "\t--FCFS\t执行先到先服务调度,\n"
-           "\t--SJF \t执行最短优先调度,\n"
-           "\t--RR  \t执行时间片轮转调度,\n"
-           "\t--PS  \t执行优先级调度(开发中),\n"
-           "\t--MLQS\t执行多级队列调度（开发中）.\n"
+    printf("\n请在可执行文件后加选项参数(纯大写或纯小写均可)：\n\n"
+           "    --FCFS\t执行先到先服务调度,\n"
+           "    --SJF \t执行最短优先调度,\n"
+           "    --RR  \t执行时间片轮转调度,\n"
+           "    --PS  \t执行优先级调度(开发中),\n"
+           "    --MLQS\t执行多级队列调度（开发中）.\n"
            "\n例如： ./a.out --fcfs\n\n"
            );
     return;
@@ -277,23 +286,23 @@ main(int argc, char* argv[])
     enum SchedType currSched;
 
     // 判断 argv 的内容是否合法，并将合法项赋给 currSched
-    if (!strncmp(strCmdArg, "--fcfs", 4) || !strncmp(strCmdArg, "--FCFS", 4)) {
+    if (!strcmp(strCmdArg, "--fcfs") || !strcmp(strCmdArg, "--FCFS")) {
         currSched = SCHED_TYPE_FCFS;
-    } else if (!strncmp(strCmdArg, "--sjf", 3) || !strncmp(strCmdArg, "--SJF", 3)) {
+    } else if (!strcmp(strCmdArg, "--sjf") || !strcmp(strCmdArg, "--SJF")) {
         currSched = SCHED_TYPE_SJF;
-    } else if (!strncmp(strCmdArg, "--rr", 2) || !strncmp(strCmdArg, "--RR", 2)) {
+    } else if (!strcmp(strCmdArg, "--rr") || !strcmp(strCmdArg, "--RR")) {
         currSched = SCHED_TYPE_RR;
-    } else if (!strncmp(strCmdArg, "--ps", 2) || !strncmp(strCmdArg, "--PS", 2)) {
+    } else if (!strcmp(strCmdArg, "--ps") || !strcmp(strCmdArg, "--PS")) {
         currSched = SCHED_TYPE_PS;
-    } else if (!strncmp(strCmdArg, "--mlqs", 4) ||
-               !strncmp(strCmdArg, "--MLQS", 4)) {
+    } else if (!strcmp(strCmdArg, "--mlqs") ||
+               !strcmp(strCmdArg, "--MLQS")) {
         currSched = SCHED_TYPE_MLQS;
     } else {
         currSched = SCHED_TYPE_HELP;
     }
 
     // 初始化所有 PCB 中的 operationalFlag
-    // 这里将每个线程的区间时间设置为0~4的随机数
+    // 这里将每个线程的区间时间设置为 1~5 的随机数
     srand((unsigned)time(NULL));
     for (int i = 0; i < THREAD_NUMBER; i++) {
         PCBQueue[i].intervalTime = rand() % 5 + 1;
